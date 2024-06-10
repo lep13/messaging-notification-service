@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.53.19
 	github.com/segmentio/kafka-go v0.4.47
 	go.mongodb.org/mongo-driver v1.15.0
+	github.com/Shopify/sarama v1.43.2
 )
 
 require (
