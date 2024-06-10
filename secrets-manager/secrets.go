@@ -21,7 +21,7 @@ func GetMongoCredentials(secretName string) (*MongoCredentials, error) {
 		return nil, err
 	}
 
-	svc := secretsmanager.New(sess, aws.NewConfig().WithRegion("your-region")) // replace "your-region" with your AWS region
+	svc := secretsmanager.New(sess, aws.NewConfig().WithRegion("us-east-1"))
 
 	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
