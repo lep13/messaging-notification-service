@@ -1,17 +1,20 @@
 package main
 
 import (
-	"log"
-
-	// "github.com/segmentio/kafka-go"
-	"github.com/lep13/messaging-notification-service/kafka"
+    "log"
+    "github.com/lep13/messaging-notification-service/kafka"
+    "github.com/lep13/messaging-notification-service/database"
 )
 
 func main() {
-	brokerAddress := "PUBLIC_IP:9092" // Public IP of the EC2 instance and port Kafka is running on
-	topic := "your-topic-name"
-	groupID := "your-group-id"
+    // Initialize MongoDB connection
+    database.InitializeMongoDB()
 
-	log.Println("Starting Kafka consumer...")
-	kafka.SetupConsumer(brokerAddress, topic, groupID)
+    // Replace these values with the actual values from your setup
+    brokerAddress := "EC2_PUBLIC_IP:9092" // Kafka broker on EC2
+    topic := "your-kafka-topic"
+    groupID := "your-consumer-group-id"
+
+    log.Println("Starting Kafka consumer...")
+    kafka.SetupConsumer(brokerAddress, topic, groupID)
 }

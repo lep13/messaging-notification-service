@@ -3,12 +3,13 @@ module github.com/lep13/messaging-notification-service
 go 1.22.3
 
 require (
-	github.com/aws/aws-sdk-go v1.53.18
+	github.com/aws/aws-sdk-go v1.53.19
 	github.com/segmentio/kafka-go v0.4.47
 	go.mongodb.org/mongo-driver v1.15.0
 )
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.15.9 // indirect
