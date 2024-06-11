@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 	"regexp"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/lep13/messaging-notification-service/database"
+	"github.com/lep13/messaging-notification-service/services"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -17,7 +19,7 @@ func ConsumeMessages() {
 	// Kafka consumer configuration
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
-	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
+	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
 	config.Version = sarama.V2_1_0_0 // Ensure you are using a compatible version
 
 	// Creating a new Kafka consumer
@@ -74,15 +76,42 @@ func processMessage(value []byte) {
 		return
 	}
 
-	// Insert the document into MongoDB
+	// Insert the document into MongoDB and get the inserted ID
 	collection := database.GetCollection("messages")
-	_, err := collection.InsertOne(context.TODO(), parsedMessage)
+	insertResult, err := collection.InsertOne(context.TODO(), parsedMessage)
 	if err != nil {
 		log.Printf("Failed to insert document into MongoDB: %v", err)
 		return
 	}
 
 	log.Printf("Message inserted into MongoDB: %s", string(value))
+
+	// Prepare the notification
+	notification := services.Notification{
+		From:    parsedMessage["from"].(string),
+		To:      parsedMessage["to"].(string),
+		Message: parsedMessage["message"].(string),
+	}
+
+	// Notify the UI about the new message
+	token := "example_token" // Replace with the actual token logic as per your setup
+	err = services.NotifyUI(notification, token)
+	if err != nil {
+		log.Printf("Failed to send notification: %v", err)
+		return
+	}
+
+	// After notification, update the document with a notified status
+	update := bson.M{
+		"$set": bson.M{
+			"notified":   true,
+			"notifiedAt": time.Now(),
+		},
+	}
+	_, err = collection.UpdateByID(context.TODO(), insertResult.InsertedID, update)
+	if err != nil {
+		log.Printf("Failed to update document with notified status: %v", err)
+	}
 }
 
 // parseMessage parses a Kafka message and returns a BSON document
