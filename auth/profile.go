@@ -9,25 +9,28 @@ import (
 	"net/http"
 
 	"github.com/lep13/messaging-notification-service/models"
-	"github.com/lep13/messaging-notification-service/secrets-manager"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
 // getProfileToken fetches the profile token from the remote API
 func getProfileToken(profileURL string) (string, error) {
 	resp, err := http.Get(profileURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to get profile token: %v", err)
+		log.Printf("Failed to get profile token: %v", err)
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("failed to get profile token, status code: %d", resp.StatusCode)
+		log.Printf("Failed to get profile token, status code: %d", resp.StatusCode)
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	var tokenResp models.TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode token response: %v", err)
+		log.Printf("Failed to decode token response: %v", err)
+		return "", err
 	}
 
 	return tokenResp.ProfileToken, nil
@@ -39,7 +42,8 @@ func ValidateUserProfile(ctx context.Context) (*models.Profile, error) {
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving secrets: %v", err)
+		log.Printf("Error retrieving secrets: %v", err)
+		return nil, err
 	}
 
 	profileURL := secrets.ProfileURL
@@ -47,13 +51,15 @@ func ValidateUserProfile(ctx context.Context) (*models.Profile, error) {
 	// Retrieve the profile token from the secure API
 	token, err := getProfileToken(profileURL)
 	if err != nil {
-		return nil, fmt.Errorf("error getting profile token: %v", err)
+		log.Printf("Error getting profile token: %v", err)
+		return nil, err
 	}
 
 	// Prepare the request
 	req, err := http.NewRequestWithContext(ctx, "GET", profileURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %v", err)
+		log.Printf("Error creating request: %v", err)
+		return nil, err
 	}
 
 	// Set the Authorization header with the token
@@ -63,23 +69,27 @@ func ValidateUserProfile(ctx context.Context) (*models.Profile, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error sending request: %v", err)
+		log.Printf("Error sending request: %v", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	// Read and parse the response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response: %v", err)
+		log.Printf("Error reading response: %v", err)
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to retrieve user profile: %s", string(body))
+		log.Printf("Failed to retrieve user profile: %s", string(body))
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	var profile models.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
-		return nil, fmt.Errorf("error unmarshalling response: %v", err)
+		log.Printf("Error unmarshalling response: %v", err)
+		return nil, err
 	}
 
 	// Log the retrieved profile

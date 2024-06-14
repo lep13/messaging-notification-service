@@ -76,6 +76,6 @@ func main() {
 	// Start the server on port 8081
 	log.Println("Mock server running on http://localhost:8081")
 	if err := http.ListenAndServe(":8081", nil); err != nil {
-		log.Fatalf("Failed to start mock server: %v", err)
+		log.Printf("Failed to start mock server: %v", err)
 	}
 }

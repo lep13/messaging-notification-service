@@ -18,6 +18,7 @@ func NotifyUI(notification models.Notification, token string) error {
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
+		log.Printf("Error retrieving secrets: %v", err)
 		return fmt.Errorf("error retrieving secrets: %v", err)
 	}
 
@@ -26,11 +27,13 @@ func NotifyUI(notification models.Notification, token string) error {
 	// Marshal the notification to JSON
 	payload, err := json.Marshal(notification)
 	if err != nil {
+		log.Printf("Failed to marshal notification: %v", err)
 		return fmt.Errorf("failed to marshal notification: %v", err)
 	}
 
 	req, err := http.NewRequest("POST", notificationEndpoint, bytes.NewBuffer(payload))
 	if err != nil {
+		log.Printf("Failed to create request: %v", err)
 		return fmt.Errorf("failed to create request: %v", err)
 	}
 
@@ -41,12 +44,14 @@ func NotifyUI(notification models.Notification, token string) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("Failed to send notification: %v", err)
 		return fmt.Errorf("failed to send notification: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("Notification request failed with status: %v", resp.Status)
 		return fmt.Errorf("notification request failed with status: %v", resp.Status)
 	}
 

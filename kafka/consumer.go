@@ -8,11 +8,11 @@ import (
 
 	"github.com/IBM/sarama"
 	"go.mongodb.org/mongo-driver/bson"
-	
+
 	"github.com/lep13/messaging-notification-service/database"
-	"github.com/lep13/messaging-notification-service/services"
 	"github.com/lep13/messaging-notification-service/models"
-	"github.com/lep13/messaging-notification-service/secrets-manager"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
+	"github.com/lep13/messaging-notification-service/services"
 )
 
 // ConsumeMessages initializes Kafka consumer and handles messages
@@ -23,7 +23,7 @@ func ConsumeMessages() {
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
-		log.Fatalf("Error retrieving secrets: %v", err)
+		log.Printf("Error retrieving secrets: %v", err)
 		return
 	}
 
@@ -39,24 +39,24 @@ func ConsumeMessages() {
 	// Creating a new Kafka consumer
 	consumer, err := sarama.NewConsumer([]string{kafkaBroker}, config)
 	if err != nil {
-		log.Fatalf("Failed to start consumer: %v", err)
+		log.Printf("Failed to start consumer: %v", err)
 		return
 	}
 	defer func() {
 		if err := consumer.Close(); err != nil {
-			log.Fatalf("Failed to close consumer: %v", err)
+			log.Printf("Failed to close consumer: %v", err)
 		}
 	}()
 
 	// Consume from the specified partition
 	partitionConsumer, err := consumer.ConsumePartition(kafkaTopic, 0, sarama.OffsetOldest)
 	if err != nil {
-		log.Fatalf("Failed to start partition consumer: %v", err)
+		log.Printf("Failed to start partition consumer: %v", err)
 		return
 	}
 	defer func() {
 		if err := partitionConsumer.Close(); err != nil {
-			log.Fatalf("Failed to close partition consumer: %v", err)
+			log.Printf("Failed to close partition consumer: %v", err)
 		}
 	}()
 
@@ -64,7 +64,10 @@ func ConsumeMessages() {
 	log.Println("Partition consumer started. Waiting for messages...")
 
 	// Initialize MongoDB connection
-	database.InitializeMongoDB()
+	if err := database.InitializeMongoDB(); err != nil {
+		log.Printf("Failed to initialize MongoDB: %v", err)
+		return
+	}
 
 	// Process messages
 	for {
