@@ -11,17 +11,24 @@ import (
 
 // MongoCredentials represents MongoDB credentials structure
 type MongoCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	MongoDBURI string `json:"mongodbURI"` // Added field for MongoDB URI
 }
 
 // SecretData represents the structure for all secrets including MongoDB credentials and Cognito token
 type SecretData struct {
-	MongoCredentials MongoCredentials `json:"mongodbcreds"`
-	CognitoToken     string           `json:"COGNITO_TOKEN"`
+	MongoCredentials     MongoCredentials `json:"mongodbcreds"`
+	CognitoToken         string           `json:"COGNITO_TOKEN"`
+	Region               string           `json:"region"`
+	UserPoolID           string           `json:"userPoolId"`
+	ProfileURL           string           `json:"profileURL"`
+	KafkaBroker          string           `json:"kafkaBroker"`
+	KafkaTopic           string           `json:"kafkaTopic"`
+	NotificationEndpoint string           `json:"notificationEndpoint"`
 }
 
-// GetSecretData fetches the MongoDB credentials and Cognito token from AWS Secrets Manager
+// GetSecretData fetches from AWS Secrets Manager
 func GetSecretData(secretName string) (SecretData, error) {
 	var secretData SecretData
 

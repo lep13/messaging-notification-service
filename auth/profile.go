@@ -23,16 +23,8 @@ type TokenResponse struct {
 }
 
 // getProfileToken fetches the profile token from the remote API
-func getProfileToken() (string, error) {
-	secretName := "mongodbcreds"
-	secrets, err := secretsmanager.GetSecretData(secretName)
-	if err != nil {
-		return "", fmt.Errorf("error retrieving secrets: %v", err)
-	}
-
-	profileTokenURL := secrets.ProfileTokenURL
-
-	resp, err := http.Get(profileTokenURL)
+func getProfileToken(profileURL string) (string, error) {
+	resp, err := http.Get(profileURL)
 	if err != nil {
 		return "", fmt.Errorf("failed to get profile token: %v", err)
 	}
@@ -53,20 +45,20 @@ func getProfileToken() (string, error) {
 
 // ValidateUserProfile sends the token to the mock service and retrieves the user's profile
 func ValidateUserProfile(ctx context.Context) (*Profile, error) {
-	// Retrieve the profile token from the secure API
-	token, err := getProfileToken()
-	if err != nil {
-		return nil, fmt.Errorf("error getting profile token: %v", err)
-	}
-
 	// Fetch the profile URL from secrets manager
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving secrets: %v", err)
 	}
 
 	profileURL := secrets.ProfileURL
+
+	// Retrieve the profile token from the secure API
+	token, err := getProfileToken(profileURL)
+	if err != nil {
+		return nil, fmt.Errorf("error getting profile token: %v", err)
+	}
 
 	// Prepare the request
 	req, err := http.NewRequestWithContext(ctx, "GET", profileURL, nil)

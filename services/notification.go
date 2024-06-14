@@ -21,7 +21,7 @@ type Notification struct {
 // NotifyUI sends a notification to the UI
 func NotifyUI(notification Notification, token string) error {
 	// Fetch the notification endpoint URL from secrets manager
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		return fmt.Errorf("error retrieving secrets: %v", err)

@@ -11,7 +11,7 @@ import (
 // ValidateCognitoToken validates the provided JWT token with AWS Cognito using cognitoJwtAuthenticator
 func ValidateCognitoToken(ctx context.Context, tokenString string) (*cognitoJwtAuthenticator.AWSCognitoClaims, error) {
 	// Fetch the region and userPoolId from secrets manager
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		log.Printf("Error retrieving secrets: %v", err)

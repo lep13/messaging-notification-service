@@ -15,7 +15,7 @@ var client *mongo.Client
 // InitializeMongoDB initializes the MongoDB client connection
 func InitializeMongoDB() {
 	// Fetch secrets including MongoDB credentials
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		log.Fatalf("Failed to get secret data: %v", err)

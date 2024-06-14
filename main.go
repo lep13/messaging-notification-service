@@ -11,7 +11,7 @@ import (
 
 func main() {
 	// Fetch secrets 
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		log.Fatalf("Failed to get secret data: %v", err)

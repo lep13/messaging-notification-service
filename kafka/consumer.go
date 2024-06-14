@@ -18,7 +18,7 @@ func ConsumeMessages() {
 	log.Println("Starting Kafka consumer...")
 
 	// Fetch secrets including Kafka broker IP and topic
-	secretName := "mongodbcreds"
+	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
 		log.Fatalf("Error retrieving secrets: %v", err)
