@@ -6,9 +6,3 @@ type Notification struct {
 	To      string `json:"to"`
 	Message string `json:"message"`
 }
-
-// MongoCredentials represents MongoDB credentials structure
-type MongoCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}

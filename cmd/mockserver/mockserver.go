@@ -7,25 +7,20 @@ import (
 	"net/http"
 	"sync"
 	"time"
-)
 
-// Notification represents the structure of a notification message
-type Notification struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Message string `json:"message"`
-}
+	"github.com/lep13/messaging-notification-service/models"
+)
 
 // NotificationServer holds the state of the mock server
 type NotificationServer struct {
 	mu            sync.Mutex
-	notifications []Notification
-	notifyChannel chan Notification
+	notifications []models.Notification
+	notifyChannel chan models.Notification
 }
 
 // handleNotify handles the incoming notification requests
 func (ns *NotificationServer) handleNotify(w http.ResponseWriter, r *http.Request) {
-	var notif Notification
+	var notif models.Notification
 	if err := json.NewDecoder(r.Body).Decode(&notif); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
@@ -69,7 +64,7 @@ func (ns *NotificationServer) runDynamicNotifier() {
 
 func main() {
 	server := &NotificationServer{
-		notifyChannel: make(chan Notification, 100),
+		notifyChannel: make(chan models.Notification, 100),
 	}
 
 	http.HandleFunc("/notify", server.handleNotify)

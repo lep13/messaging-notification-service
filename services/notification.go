@@ -8,18 +8,12 @@ import (
 	"net/http"
 	"time"
 
-	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
+	"github.com/lep13/messaging-notification-service/models"
+	"github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
-// Notification represents the structure of the notification message
-type Notification struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Message string `json:"message"`
-}
-
 // NotifyUI sends a notification to the UI
-func NotifyUI(notification Notification, token string) error {
+func NotifyUI(notification models.Notification, token string) error {
 	// Fetch the notification endpoint URL from secrets manager
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)

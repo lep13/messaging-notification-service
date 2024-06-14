@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/lep13/messaging-notification-service/database"
-	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
-	"github.com/lep13/messaging-notification-service/services"
 	"go.mongodb.org/mongo-driver/bson"
+	
+	"github.com/lep13/messaging-notification-service/database"
+	"github.com/lep13/messaging-notification-service/services"
+	"github.com/lep13/messaging-notification-service/models"
+	"github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
 // ConsumeMessages initializes Kafka consumer and handles messages
@@ -99,7 +101,7 @@ func processMessage(value []byte) {
 	log.Printf("Message inserted into MongoDB: %s", string(value))
 
 	// Prepare the notification
-	notification := services.Notification{
+	notification := models.Notification{
 		From:    parsedMessage["from"].(string),
 		To:      parsedMessage["to"].(string),
 		Message: parsedMessage["message"].(string),

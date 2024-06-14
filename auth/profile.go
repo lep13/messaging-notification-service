@@ -8,19 +8,9 @@ import (
 	"log"
 	"net/http"
 
-	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
+	"github.com/lep13/messaging-notification-service/models"
+	"github.com/lep13/messaging-notification-service/secrets-manager"
 )
-
-// Profile represents the user's profile structure
-type Profile struct {
-	FirstName string `json:"first_name"`
-	UID       string `json:"uid"`
-}
-
-// TokenResponse represents the structure for the response from the token API
-type TokenResponse struct {
-	ProfileToken string `json:"profile_token"`
-}
 
 // getProfileToken fetches the profile token from the remote API
 func getProfileToken(profileURL string) (string, error) {
@@ -34,7 +24,7 @@ func getProfileToken(profileURL string) (string, error) {
 		return "", fmt.Errorf("failed to get profile token, status code: %d", resp.StatusCode)
 	}
 
-	var tokenResp TokenResponse
+	var tokenResp models.TokenResponse
 	err = json.NewDecoder(resp.Body).Decode(&tokenResp)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode token response: %v", err)
@@ -44,7 +34,7 @@ func getProfileToken(profileURL string) (string, error) {
 }
 
 // ValidateUserProfile sends the token to the mock service and retrieves the user's profile
-func ValidateUserProfile(ctx context.Context) (*Profile, error) {
+func ValidateUserProfile(ctx context.Context) (*models.Profile, error) {
 	// Fetch the profile URL from secrets manager
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
@@ -87,7 +77,7 @@ func ValidateUserProfile(ctx context.Context) (*Profile, error) {
 		return nil, fmt.Errorf("failed to retrieve user profile: %s", string(body))
 	}
 
-	var profile Profile
+	var profile models.Profile
 	if err := json.Unmarshal(body, &profile); err != nil {
 		return nil, fmt.Errorf("error unmarshalling response: %v", err)
 	}

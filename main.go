@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	// Fetch secrets 
+	// Fetch secrets including Cognito token and MongoDB credentials
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
