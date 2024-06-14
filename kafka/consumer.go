@@ -8,6 +8,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/lep13/messaging-notification-service/database"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 	"github.com/lep13/messaging-notification-service/services"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -16,14 +17,25 @@ import (
 func ConsumeMessages() {
 	log.Println("Starting Kafka consumer...")
 
+	// Fetch secrets including Kafka broker IP and topic
+	secretName := "mongodbcreds"
+	secrets, err := secretsmanager.GetSecretData(secretName)
+	if err != nil {
+		log.Fatalf("Error retrieving secrets: %v", err)
+		return
+	}
+
+	kafkaBroker := secrets.KafkaBroker
+	kafkaTopic := secrets.KafkaTopic
+
 	// Kafka consumer configuration
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
-	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
-	config.Version = sarama.V2_1_0_0 // Ensure you are using a compatible version
+	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
+	config.Version = sarama.V2_1_0_0
 
 	// Creating a new Kafka consumer
-	consumer, err := sarama.NewConsumer([]string{"34.224.79.8:9092"}, config)
+	consumer, err := sarama.NewConsumer([]string{kafkaBroker}, config)
 	if err != nil {
 		log.Fatalf("Failed to start consumer: %v", err)
 		return
@@ -35,7 +47,7 @@ func ConsumeMessages() {
 	}()
 
 	// Consume from the specified partition
-	partitionConsumer, err := consumer.ConsumePartition("chat-topic-46", 0, sarama.OffsetOldest)
+	partitionConsumer, err := consumer.ConsumePartition(kafkaTopic, 0, sarama.OffsetOldest)
 	if err != nil {
 		log.Fatalf("Failed to start partition consumer: %v", err)
 		return
@@ -69,14 +81,14 @@ func ConsumeMessages() {
 func processMessage(value []byte) {
 	log.Printf("Processing message: %s", string(value))
 
-	// Assuming the message is in the format "From:<from>, To:<to>, Message:<msg>"
+	// message is in the format "From:<from>, To:<to>, Message:<msg>"
 	parsedMessage := parseMessage(string(value))
 	if parsedMessage == nil {
 		log.Printf("Failed to parse message: %s", string(value))
 		return
 	}
 
-	// Insert the document into MongoDB and get the inserted ID
+	// Insert the document into MongoDB
 	collection := database.GetCollection("messages")
 	insertResult, err := collection.InsertOne(context.TODO(), parsedMessage)
 	if err != nil {
@@ -98,6 +110,18 @@ func processMessage(value []byte) {
 	err = services.NotifyUI(notification, token)
 	if err != nil {
 		log.Printf("Failed to send notification: %v", err)
+
+		// Update the document with notified status false and reason for failure
+		update := bson.M{
+			"$set": bson.M{
+				"notified": false,
+				"reason":   "Failed to send notification",
+			},
+		}
+		_, updateErr := collection.UpdateByID(context.Background(), insertResult.InsertedID, update)
+		if updateErr != nil {
+			log.Printf("Failed to update document with failure reason: %v", updateErr)
+		}
 		return
 	}
 
@@ -108,7 +132,7 @@ func processMessage(value []byte) {
 			"notifiedAt": time.Now(),
 		},
 	}
-	_, err = collection.UpdateByID(context.TODO(), insertResult.InsertedID, update)
+	_, err = collection.UpdateByID(context.Background(), insertResult.InsertedID, update)
 	if err != nil {
 		log.Printf("Failed to update document with notified status: %v", err)
 	}

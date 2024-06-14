@@ -14,16 +14,19 @@ var client *mongo.Client
 
 // InitializeMongoDB initializes the MongoDB client connection
 func InitializeMongoDB() {
-	creds, err := secretsmanager.GetMongoCredentials("mongodbcreds")
+	// Fetch secrets including MongoDB credentials
+	secretName := "mongodbcreds"
+	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
-		log.Fatalf("Failed to get MongoDB credentials: %v", err)
+		log.Fatalf("Failed to get secret data: %v", err)
 	}
 
-
-	uri := "mongodb+srv://" + creds.Username + ":" + creds.Password + "@messages-cluster.utdovdn.mongodb.net/PROJECT0?retryWrites=true&w=majority"
+	// Use the fetched MongoDB credentials
+	creds := secrets.MongoCredentials
+	uri := creds.MongoDBURI
 	clientOptions := options.Client().ApplyURI(uri)
 
-	client, err = mongo.Connect(context.TODO(), clientOptions)
+	client, err = mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatalf("Failed to connect to MongoDB: %v", err)
 	}

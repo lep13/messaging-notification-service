@@ -2,6 +2,7 @@ package secretsmanager
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -14,11 +15,19 @@ type MongoCredentials struct {
 	Password string `json:"password"`
 }
 
-// GetMongoCredentials fetches the MongoDB credentials from AWS Secrets Manager
-func GetMongoCredentials(secretName string) (*MongoCredentials, error) {
+// SecretData represents the structure for all secrets including MongoDB credentials and Cognito token
+type SecretData struct {
+	MongoCredentials MongoCredentials `json:"mongodbcreds"`
+	CognitoToken     string           `json:"COGNITO_TOKEN"`
+}
+
+// GetSecretData fetches the MongoDB credentials and Cognito token from AWS Secrets Manager
+func GetSecretData(secretName string) (SecretData, error) {
+	var secretData SecretData
+
 	sess, err := session.NewSession()
 	if err != nil {
-		return nil, err
+		return secretData, err
 	}
 
 	svc := secretsmanager.New(sess, aws.NewConfig().WithRegion("us-east-1"))
@@ -27,14 +36,17 @@ func GetMongoCredentials(secretName string) (*MongoCredentials, error) {
 		SecretId: aws.String(secretName),
 	})
 	if err != nil {
-		return nil, err
+		return secretData, err
 	}
 
-	var credentials MongoCredentials
-	err = json.Unmarshal([]byte(*result.SecretString), &credentials)
+	if result.SecretString == nil {
+		return secretData, errors.New("secret string is nil")
+	}
+
+	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
-		return nil, err
+		return secretData, err
 	}
 
-	return &credentials, nil
+	return secretData, nil
 }

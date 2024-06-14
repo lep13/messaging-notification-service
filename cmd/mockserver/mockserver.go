@@ -35,9 +35,7 @@ func (ns *NotificationServer) handleNotify(w http.ResponseWriter, r *http.Reques
 	ns.notifications = append(ns.notifications, notif)
 	ns.mu.Unlock()
 
-	// Send the notification to the channel
 	ns.notifyChannel <- notif
-
 	fmt.Fprintf(w, "Notification received successfully")
 }
 
@@ -51,12 +49,10 @@ func (ns *NotificationServer) handleViewNotifications(w http.ResponseWriter, r *
 		return
 	}
 
-	// Display each notification with a delay
 	for _, notif := range ns.notifications {
 		fmt.Fprintf(w, "From: %s, To: %s, Message: %s\n", notif.From, notif.To, notif.Message)
-		time.Sleep(2 * time.Second) // Simulate delay between notifications
+		time.Sleep(5 * time.Second) // Simulate delay between notifications
 	}
-	// Clear notifications after displaying
 	ns.notifications = nil
 }
 
@@ -66,7 +62,7 @@ func (ns *NotificationServer) runDynamicNotifier() {
 		select {
 		case notif := <-ns.notifyChannel:
 			log.Printf("Processing notification: From: %s, To: %s, Message: %s\n", notif.From, notif.To, notif.Message)
-			time.Sleep(2 * time.Second) // Simulate processing time
+			time.Sleep(5 * time.Second) // Simulate processing time
 		}
 	}
 }

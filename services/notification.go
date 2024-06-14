@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
 // Notification represents the structure of the notification message
@@ -18,13 +20,22 @@ type Notification struct {
 
 // NotifyUI sends a notification to the UI
 func NotifyUI(notification Notification, token string) error {
+	// Fetch the notification endpoint URL from secrets manager
+	secretName := "mongodbcreds"
+	secrets, err := secretsmanager.GetSecretData(secretName)
+	if err != nil {
+		return fmt.Errorf("error retrieving secrets: %v", err)
+	}
+
+	notificationEndpoint := secrets.NotificationEndpoint
+
 	// Marshal the notification to JSON
 	payload, err := json.Marshal(notification)
 	if err != nil {
 		return fmt.Errorf("failed to marshal notification: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", "http://localhost:8081/notify", bytes.NewBuffer(payload))
+	req, err := http.NewRequest("POST", notificationEndpoint, bytes.NewBuffer(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
 	}

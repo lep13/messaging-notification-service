@@ -1,100 +1,32 @@
 package auth
 
 import (
-	"crypto/rsa"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"net/http"
-	"sync"
+	"context"
+	"log"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/ShreerajShettyK/cognitoJwtAuthenticator"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
-var (
-	cognitoRegion = "your-region"       // AWS region where Cognito is set up
-	cognitoPoolID = "your-user-pool-id" // Cognito User Pool ID
-	jwksURL       = fmt.Sprintf("https://cognito-idp.%s.amazonaws.com/%s/.well-known/jwks.json", cognitoRegion, cognitoPoolID)
-	cachedJWKS    *JWKS
-	jwksSync      sync.Mutex
-)
-
-// JWKS represents the JSON Web Key Set
-type JWKS struct {
-	Keys []json.RawMessage `json:"keys"`
-}
-
-// ValidateUser validates the user by decoding and verifying the JWT
-func ValidateUser(token string) (bool, error) {
-	// Get JWKS for token validation
-	jwks, err := getJWKS()
+// ValidateCognitoToken validates the provided JWT token with AWS Cognito using cognitoJwtAuthenticator
+func ValidateCognitoToken(ctx context.Context, tokenString string) (*cognitoJwtAuthenticator.AWSCognitoClaims, error) {
+	// Fetch the region and userPoolId from secrets manager
+	secretName := "mongodbcreds"
+	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
-		return false, err
-	}
-
-	// Parse the JWT token
-	jwtToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
-		// Ensure the token method is RSA
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-
-		kid := token.Header["kid"].(string)
-
-		// Find the appropriate key from the JWKS
-		for _, key := range jwks.Keys {
-			rsaPublicKey, err := parseRSAPublicKey(key)
-			if err != nil {
-				continue
-			}
-			if jwtToken.Header["kid"] == rsaPublicKey.KeyID {
-				return rsaPublicKey.PublicKey, nil
-			}
-		}
-		return nil, errors.New("unable to find key")
-	})
-
-	if err != nil || !jwtToken.Valid {
-		return false, err
-	}
-
-	// Additional validation can be added here
-	return true, nil
-}
-
-// getJWKS retrieves and caches the JWKS from the specified URL
-func getJWKS() (*JWKS, error) {
-	jwksSync.Lock()
-	defer jwksSync.Unlock()
-
-	if cachedJWKS != nil {
-		return cachedJWKS, nil
-	}
-
-	resp, err := http.Get(jwksURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var jwks JWKS
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+		log.Printf("Error retrieving secrets: %v", err)
 		return nil, err
 	}
 
-	cachedJWKS = &jwks
-	return &jwks, nil
-}
+	region := secrets.Region
+	userPoolId := secrets.UserPoolID
 
-// parseRSAPublicKey parses an RSA public key from the JWKS
-func parseRSAPublicKey(key json.RawMessage) (*rsa.PublicKey, error) {
-	var rsaKey struct {
-		KeyID     string `json:"kid"`
-		PublicKey *rsa.PublicKey
-	}
-	err := json.Unmarshal(key, &rsaKey)
+	claims, err := cognitoJwtAuthenticator.ValidateToken(ctx, region, userPoolId, tokenString)
 	if err != nil {
+		log.Printf("Token validation error: %s", err)
 		return nil, err
 	}
-	return rsaKey.PublicKey, nil
+	log.Println("Token is valid")
+	log.Printf("Claims: %+v", claims)
+	return claims, nil
 }
