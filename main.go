@@ -37,6 +37,6 @@ func main() {
 
 	log.Printf("Validated user profile: %v", profile)
 
-	// Now continue with consuming messages from Kafka
+	// continue with consuming messages from Kafka
 	kafka.ConsumeMessages()
 }

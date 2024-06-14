@@ -1,58 +1,55 @@
 package secretsmanager
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
+
+	"github.com/lep13/messaging-notification-service/models"
 )
 
-// MongoCredentials represents MongoDB credentials structure
-type MongoCredentials struct {
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	MongoDBURI string `json:"mongodbURI"` // Added field for MongoDB URI
-}
+// GetSecretData fetches secrets from AWS Secrets Manager
+func GetSecretData(secretName string) (models.SecretData, error) {
+	var secretData models.SecretData
 
-// SecretData represents the structure for all secrets including MongoDB credentials and Cognito token
-type SecretData struct {
-	MongoCredentials     MongoCredentials `json:"mongodbcreds"`
-	CognitoToken         string           `json:"COGNITO_TOKEN"`
-	Region               string           `json:"region"`
-	UserPoolID           string           `json:"userPoolId"`
-	ProfileURL           string           `json:"profileURL"`
-	KafkaBroker          string           `json:"kafkaBroker"`
-	KafkaTopic           string           `json:"kafkaTopic"`
-	NotificationEndpoint string           `json:"notificationEndpoint"`
-}
-
-// GetSecretData fetches from AWS Secrets Manager
-func GetSecretData(secretName string) (SecretData, error) {
-	var secretData SecretData
-
-	sess, err := session.NewSession()
+	// Load the AWS configuration from environment variables or the shared configuration file
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
-		return secretData, err
+		return secretData, fmt.Errorf("unable to load SDK config, %v", err)
 	}
 
-	svc := secretsmanager.New(sess, aws.NewConfig().WithRegion("us-east-1"))
+	// Create a Secrets Manager client
+	client := secretsmanager.NewFromConfig(cfg)
 
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
+	// Retrieve the secret value
+	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
-	})
-	if err != nil {
-		return secretData, err
 	}
 
+	result, err := client.GetSecretValue(context.TODO(), input)
+	if err != nil {
+		var re *types.ResourceNotFoundException
+		if errors.As(err, &re) {
+			return secretData, fmt.Errorf("the requested secret %s was not found", secretName)
+		}
+		return secretData, fmt.Errorf("failed to retrieve secret value, %v", err)
+	}
+
+	// Check if the secret value is nil
 	if result.SecretString == nil {
 		return secretData, errors.New("secret string is nil")
 	}
 
+	// Unmarshal the secret string into the secretData struct
 	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
-		return secretData, err
+		return secretData, fmt.Errorf("failed to unmarshal secret string, %v", err)
 	}
 
 	return secretData, nil
