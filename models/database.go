@@ -9,7 +9,7 @@ type MongoCredentials struct {
 // SecretData represents the structure for all secrets including MongoDB URI and Cognito token
 type SecretData struct {
 	MongoDBURI           string `json:"mongodbURI"` // MongoDB connection URI
-	CognitoToken         string `json:"COGNITO_TOKEN"`
+	CognitoToken         string `json:"COGNITO_TOKEN"`  //AWS cognito token
 	Region               string `json:"region"`               // AWS region
 	UserPoolID           string `json:"userPoolId"`           // User Pool ID
 	ProfileURL           string `json:"profileURL"`           // Profile URL
