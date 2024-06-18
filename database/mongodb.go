@@ -14,7 +14,7 @@ var client *mongo.Client
 
 // InitializeMongoDB initializes the MongoDB client connection
 func InitializeMongoDB() error {
-	// Fetch secrets including MongoDB credentials
+	// Fetch secrets including MongoDB URI
 	secretName := "notifsecrets"
 	secrets, err := secretsmanager.GetSecretData(secretName)
 	if err != nil {
@@ -22,9 +22,9 @@ func InitializeMongoDB() error {
 		return err
 	}
 
-	// Use the fetched MongoDB credentials
-	creds := secrets.MongoCredentials
-	uri := creds.MongoDBURI
+	// Use the MongoDB URI from the secrets
+	uri := secrets.MongoDBURI
+
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err = mongo.Connect(context.Background(), clientOptions)
