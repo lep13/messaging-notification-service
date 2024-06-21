@@ -14,8 +14,17 @@ import (
 	"github.com/lep13/messaging-notification-service/models"
 )
 
+type SecretManager interface {
+    GetSecretData(secretName string) (models.SecretData, error)
+}
+
+// GetSecretData function adheres to this interface
+var DefaultSecretManager SecretManager = &secretManager{}
+
+type secretManager struct{}
+
 // GetSecretData fetches secrets from AWS Secrets Manager
-func GetSecretData(secretName string) (models.SecretData, error) {
+func (sm *secretManager) GetSecretData(secretName string) (models.SecretData, error) {
 	var secretData models.SecretData
 
 	// Load the AWS configuration from environment variables or the shared configuration file
