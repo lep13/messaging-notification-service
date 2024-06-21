@@ -1,40 +1,56 @@
 package secretsmanager
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
+
+	"github.com/lep13/messaging-notification-service/models"
 )
 
-// MongoCredentials represents MongoDB credentials structure
-type MongoCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
+// GetSecretData fetches secrets from AWS Secrets Manager
+func GetSecretData(secretName string) (models.SecretData, error) {
+	var secretData models.SecretData
 
-// GetMongoCredentials fetches the MongoDB credentials from AWS Secrets Manager
-func GetMongoCredentials(secretName string) (*MongoCredentials, error) {
-	sess, err := session.NewSession()
+	// Load the AWS configuration from environment variables or the shared configuration file
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
-		return nil, err
+		return secretData, fmt.Errorf("unable to load SDK config, %v", err)
 	}
 
-	svc := secretsmanager.New(sess, aws.NewConfig().WithRegion("your-region")) // replace "your-region" with your AWS region
+	// Create a Secrets Manager client
+	client := secretsmanager.NewFromConfig(cfg)
 
-	result, err := svc.GetSecretValue(&secretsmanager.GetSecretValueInput{
+	// Retrieve the secret value
+	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
-	})
-	if err != nil {
-		return nil, err
 	}
 
-	var credentials MongoCredentials
-	err = json.Unmarshal([]byte(*result.SecretString), &credentials)
+	result, err := client.GetSecretValue(context.TODO(), input)
 	if err != nil {
-		return nil, err
+		var re *types.ResourceNotFoundException
+		if errors.As(err, &re) {
+			return secretData, fmt.Errorf("the requested secret %s was not found", secretName)
+		}
+		return secretData, fmt.Errorf("failed to retrieve secret value, %v", err)
 	}
 
-	return &credentials, nil
+	// Check if the secret value is nil
+	if result.SecretString == nil {
+		return secretData, errors.New("secret string is nil")
+	}
+
+	// Unmarshal the secret string into the secretData struct
+	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
+	if err != nil {
+		return secretData, fmt.Errorf("failed to unmarshal secret string, %v", err)
+	}
+
+	return secretData, nil
 }

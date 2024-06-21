@@ -1,63 +1,53 @@
 package database
 
 import (
-    "context"
-    "log"
-    "github.com/lep13/messaging-notification-service/secrets-manager"
+	"context"
+	"log"
+	"time"
 
-    "go.mongodb.org/mongo-driver/mongo"
-    "go.mongodb.org/mongo-driver/mongo/options"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var client *mongo.Client
 
-// Message represents the structure of the message document in MongoDB
-type Message struct {
-    FromUser           string `bson:"from_user"`
-    ToUser             string `bson:"to_user"`
-    MessageContent     string `bson:"message_content"`
-    MessageConfirmation bool   `bson:"message_confirmation"`
-}
-
 // InitializeMongoDB initializes the MongoDB client connection
-func InitializeMongoDB() {
-    creds, err := secretsmanager.GetMongoCredentials("mongo/credentials")
-    if err != nil {
-        log.Fatalf("Failed to get MongoDB credentials: %v", err)
-    }
+func InitializeMongoDB() error {
+	// Fetch secrets including MongoDB URI
+	secretName := "notifsecrets"
+	secrets, err := secretsmanager.GetSecretData(secretName)
+	if err != nil {
+		log.Printf("Failed to get secret data: %v", err)
+		return err
+	}
 
-    uri := "mongodb+srv://" + creds.Username + ":" + creds.Password + "@messages-cluster.mongodb.net/PROJECT0?retryWrites=true&w=majority"
-    clientOptions := options.Client().ApplyURI(uri)
+	// Use the MongoDB URI from the secrets
+	uri := secrets.MongoDBURI
 
-    client, err = mongo.Connect(context.TODO(), clientOptions)
-    if err != nil {
-        log.Fatalf("Failed to connect to MongoDB: %v", err)
-    }
+	clientOptions := options.Client().ApplyURI(uri)
 
-    err = client.Ping(context.TODO(), nil)
-    if err != nil {
-        log.Fatalf("Failed to ping MongoDB: %v", err)
-    }
+	client, err = mongo.Connect(context.Background(), clientOptions)
+	if err != nil {
+		log.Printf("Failed to connect to MongoDB: %v", err)
+		return err
+	}
 
-    log.Println("Connected to MongoDB successfully")
+	// Adding a timeout to the ping context
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Printf("Failed to ping MongoDB: %v", err)
+		return err
+	}
+
+	log.Println("Connected to MongoDB successfully")
+	return nil
 }
 
-// InsertMessage inserts a message document into the MongoDB collection
-func InsertMessage(fromUser, toUser, messageContent string, messageConfirmation bool) error {
-    collection := client.Database("PROJECT0").Collection("messages")
-
-    msg := Message{
-        FromUser:           fromUser,
-        ToUser:             toUser,
-        MessageContent:     messageContent,
-        MessageConfirmation: messageConfirmation,
-    }
-
-    _, err := collection.InsertOne(context.TODO(), msg)
-    if err != nil {
-        return err
-    }
-
-    log.Printf("Inserted message from %s to %s into MongoDB", fromUser, toUser)
-    return nil
+// GetCollection returns a collection from the MongoDB database
+func GetCollection(collectionName string) *mongo.Collection {
+	return client.Database("PROJECT0").Collection(collectionName)
 }
