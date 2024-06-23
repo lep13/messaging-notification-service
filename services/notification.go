@@ -12,11 +12,10 @@ import (
 	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
-// NotifyUI sends a notification to the UI
-func NotifyUI(notification models.Notification, token string) error {
-	// Create a secret manager instance
-	secretManager := secretsmanager.NewSecretManager(nil)
+var httpClient = &http.Client{Timeout: 10 * time.Second}
 
+// NotifyUI sends a notification to the UI
+func NotifyUI(notification interface{}, token string, secretManager secretsmanager.SecretManager) error {
 	// Fetch the notification endpoint URL from secrets manager
 	secretName := "notifsecrets"
 	secrets, err := secretManager.GetSecretData(secretName)
@@ -44,8 +43,7 @@ func NotifyUI(notification models.Notification, token string) error {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("Failed to send notification: %v", err)
 		return fmt.Errorf("failed to send notification: %v", err)
@@ -58,6 +56,6 @@ func NotifyUI(notification models.Notification, token string) error {
 		return fmt.Errorf("notification request failed with status: %v", resp.Status)
 	}
 
-	log.Printf("Notification sent to UI: From:%s, To:%s, Message:%s", notification.From, notification.To, notification.Message)
+	log.Printf("Notification sent to UI: From:%s, To:%s, Message:%s", notification.(models.Notification).From, notification.(models.Notification).To, notification.(models.Notification).Message)
 	return nil
 }

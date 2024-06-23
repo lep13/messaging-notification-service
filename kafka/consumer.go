@@ -77,7 +77,7 @@ func ConsumeMessages() {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			log.Printf("Received message from Kafka: %s", string(msg.Value))
-			processMessage(msg.Value)
+			processMessage(msg.Value, secretManager)
 
 		case err := <-partitionConsumer.Errors():
 			log.Printf("Error consuming message: %v", err)
@@ -86,7 +86,7 @@ func ConsumeMessages() {
 }
 
 // processMessage handles the received Kafka message
-func processMessage(value []byte) {
+func processMessage(value []byte, secretManager secretsmanager.SecretManager) {
 	log.Printf("Processing message: %s", string(value))
 
 	// message is in the format "From:<from>, To:<to>, Message:<msg>"
@@ -115,7 +115,7 @@ func processMessage(value []byte) {
 
 	// Notify the UI about the new message
 	token := "example_token" // Replace with the actual token logic as per your setup
-	err = services.NotifyUI(notification, token)
+	err = services.NotifyUI(notification, token, secretManager)
 	if err != nil {
 		log.Printf("Failed to send notification: %v", err)
 
