@@ -62,7 +62,8 @@ func (ns *NotificationServer) runDynamicNotifier() {
 	}
 }
 
-func main() {
+// StartServer starts the HTTP server and listens on the specified port.
+func StartServer() error {
 	server := &NotificationServer{
 		notifyChannel: make(chan models.Notification, 100),
 	}
@@ -75,7 +76,11 @@ func main() {
 
 	// Start the server on port 8081
 	log.Println("Mock server running on http://localhost:8081")
-	if err := http.ListenAndServe(":8081", nil); err != nil {
+	return http.ListenAndServe(":8081", nil)
+}
+
+func main() {
+	if err := StartServer(); err != nil {
 		log.Printf("Failed to start mock server: %v", err)
 	}
 }
