@@ -10,38 +10,53 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/types"
-
 	"github.com/lep13/messaging-notification-service/models"
 )
 
-type SecretManager interface {
-    GetSecretData(secretName string) (models.SecretData, error)
+// SecretsManagerAPI defines the methods that our AWS client will implement
+type SecretsManagerAPI interface {
+	GetSecretValue(ctx context.Context, input *secretsmanager.GetSecretValueInput, opts ...func(*secretsmanager.Options)) (*secretsmanager.GetSecretValueOutput, error)
 }
 
-// GetSecretData function adheres to this interface
-var DefaultSecretManager SecretManager = &secretManager{}
+// secretManager is our custom implementation that uses the AWS client
+type secretManager struct {
+	client SecretsManagerAPI
+}
 
-type secretManager struct{}
+// SecretManager is the interface that our secret manager implements
+type SecretManager interface {
+	GetSecretData(secretName string) (models.SecretData, error)
+}
+
+// loadAWSConfig is a variable that points to the function that loads AWS config.
+// This allows us to replace it with a mock in tests.
+var loadAWSConfig = config.LoadDefaultConfig
+
+// NewSecretManager creates a new instance of secretManager with the given client.
+func NewSecretManager(client SecretsManagerAPI) *secretManager {
+	return &secretManager{
+		client: client,
+	}
+}
 
 // GetSecretData fetches secrets from AWS Secrets Manager
 func (sm *secretManager) GetSecretData(secretName string) (models.SecretData, error) {
 	var secretData models.SecretData
 
-	// Load the AWS configuration from environment variables or the shared configuration file
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
+	cfg, err := loadAWSConfig(context.TODO(), config.WithRegion("us-east-1"))
 	if err != nil {
 		return secretData, fmt.Errorf("unable to load SDK config, %v", err)
 	}
 
-	// Create a Secrets Manager client
-	client := secretsmanager.NewFromConfig(cfg)
+	if sm.client == nil {
+		sm.client = secretsmanager.NewFromConfig(cfg)
+	}
 
-	// Retrieve the secret value
 	input := &secretsmanager.GetSecretValueInput{
 		SecretId: aws.String(secretName),
 	}
 
-	result, err := client.GetSecretValue(context.TODO(), input)
+	result, err := sm.client.GetSecretValue(context.TODO(), input)
 	if err != nil {
 		var re *types.ResourceNotFoundException
 		if errors.As(err, &re) {
@@ -50,12 +65,10 @@ func (sm *secretManager) GetSecretData(secretName string) (models.SecretData, er
 		return secretData, fmt.Errorf("failed to retrieve secret value, %v", err)
 	}
 
-	// Check if the secret value is nil
 	if result.SecretString == nil {
 		return secretData, errors.New("secret string is nil")
 	}
 
-	// Unmarshal the secret string into the secretData struct
 	err = json.Unmarshal([]byte(*result.SecretString), &secretData)
 	if err != nil {
 		return secretData, fmt.Errorf("failed to unmarshal secret string, %v", err)
