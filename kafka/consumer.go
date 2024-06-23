@@ -19,9 +19,12 @@ import (
 func ConsumeMessages() {
 	log.Println("Starting Kafka consumer...")
 
+	// Create a secret manager instance
+	secretManager := secretsmanager.NewSecretManager(nil)
+
 	// Fetch secrets including Kafka broker IP and topic
 	secretName := "notifsecrets"
-	secrets, err := secretsmanager.GetSecretData(secretName)
+	secrets, err := secretManager.GetSecretData(secretName)
 	if err != nil {
 		log.Printf("Error retrieving secrets: %v", err)
 		return

@@ -10,9 +10,12 @@ import (
 )
 
 func main() {
+	// Create a new SecretManager instance
+	secretManager := secretsmanager.NewSecretManager(nil)
+
 	// Fetch secrets including Cognito token and MongoDB credentials
 	secretName := "notifsecrets"
-	secrets, err := secretsmanager.GetSecretData(secretName)
+	secrets, err := secretManager.GetSecretData(secretName)
 	if err != nil {
 		log.Printf("Failed to get secret data: %v", err)
 		return
@@ -25,7 +28,7 @@ func main() {
 	}
 
 	// Validate the Cognito token
-	claims, err := auth.ValidateCognitoToken(context.Background(), cognitoToken)
+	claims, err := auth.ValidateCognitoToken(context.Background(), cognitoToken, secretManager, auth.DefaultTokenValidator)
 	if err != nil {
 		log.Printf("Cognito token validation failed: %s", err)
 		return
@@ -33,7 +36,7 @@ func main() {
 	log.Printf("Cognito token validated: %v", claims)
 
 	// Validate the "to" user using the profile token and mock API
-	profile, err := auth.ValidateUserProfile(context.Background())
+	profile, err := auth.ValidateUserProfile(context.Background(), secretManager)
 	if err != nil {
 		log.Printf("Failed to validate user profile: %v", err)
 		return

@@ -9,14 +9,17 @@ import (
 	"time"
 
 	"github.com/lep13/messaging-notification-service/models"
-	"github.com/lep13/messaging-notification-service/secrets-manager"
+	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
 
 // NotifyUI sends a notification to the UI
 func NotifyUI(notification models.Notification, token string) error {
+	// Create a secret manager instance
+	secretManager := secretsmanager.NewSecretManager(nil)
+
 	// Fetch the notification endpoint URL from secrets manager
 	secretName := "notifsecrets"
-	secrets, err := secretsmanager.GetSecretData(secretName)
+	secrets, err := secretManager.GetSecretData(secretName)
 	if err != nil {
 		log.Printf("Error retrieving secrets: %v", err)
 		return fmt.Errorf("error retrieving secrets: %v", err)
