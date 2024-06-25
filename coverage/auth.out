@@ -2,7 +2,7 @@ mode: set
 github.com/lep13/messaging-notification-service/auth/cognito.go:16.182,20.19 3 1
 github.com/lep13/messaging-notification-service/auth/cognito.go:20.19,23.6 2 0
 github.com/lep13/messaging-notification-service/auth/cognito.go:25.5,29.19 4 1
-github.com/lep13/messaging-notification-service/auth/cognito.go:29.19,32.6 2 0
+github.com/lep13/messaging-notification-service/auth/cognito.go:29.19,32.6 2 1
 github.com/lep13/messaging-notification-service/auth/cognito.go:33.5,35.23 3 1
 github.com/lep13/messaging-notification-service/auth/mocks.go:14.90,20.2 1 1
 github.com/lep13/messaging-notification-service/auth/profile.go:16.63,18.19 2 1
