@@ -11,6 +11,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+// CollectionInterface defines the methods to be mocked for MongoDB collection.
+type CollectionInterface interface {
+	InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error)
+	UpdateByID(ctx context.Context, id interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error)
+}
+
 // MongoClientInterface defines the interface for MongoDB client methods used in our code.
 type MongoClientInterface interface {
 	Ping(ctx context.Context, rp *readpref.ReadPref) error

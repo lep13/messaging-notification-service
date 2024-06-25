@@ -1,0 +1,12 @@
+mode: set
+github.com/lep13/messaging-notification-service/services/notification.go:18.105,22.16 3 1
+github.com/lep13/messaging-notification-service/services/notification.go:22.16,25.3 2 1
+github.com/lep13/messaging-notification-service/services/notification.go:27.2,31.16 3 1
+github.com/lep13/messaging-notification-service/services/notification.go:31.16,34.3 2 1
+github.com/lep13/messaging-notification-service/services/notification.go:36.2,37.16 2 1
+github.com/lep13/messaging-notification-service/services/notification.go:37.16,40.3 2 0
+github.com/lep13/messaging-notification-service/services/notification.go:43.2,47.16 4 1
+github.com/lep13/messaging-notification-service/services/notification.go:47.16,50.3 2 0
+github.com/lep13/messaging-notification-service/services/notification.go:51.2,54.38 2 1
+github.com/lep13/messaging-notification-service/services/notification.go:54.38,57.3 2 1
+github.com/lep13/messaging-notification-service/services/notification.go:59.2,60.12 2 1

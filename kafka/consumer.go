@@ -15,12 +15,25 @@ import (
 	"github.com/lep13/messaging-notification-service/services"
 )
 
-// ConsumeMessages initializes Kafka consumer and handles messages
-func ConsumeMessages() {
+// Dependencies for the ConsumeMessages function
+type ConsumerDependencies struct {
+	NewSecretManager  func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager
+	InitializeMongoDB func() error
+	GetCollection     func(collectionName string) database.CollectionInterface
+	NewKafkaConsumer  func(addrs []string, config *sarama.Config) (sarama.Consumer, error)
+}
+
+// ConsumeMessages initializes Kafka consumer and handles messages.
+func ConsumeMessages(deps ConsumerDependencies) {
 	log.Println("Starting Kafka consumer...")
 
 	// Create a secret manager instance
-	secretManager := secretsmanager.NewSecretManager(nil)
+	secretManager := deps.NewSecretManager(nil)
+	if secretManager == nil {
+		log.Println("Failed to create secret manager instance")
+		return
+	}
+	log.Println("Secret manager created successfully")
 
 	// Fetch secrets including Kafka broker IP and topic
 	secretName := "notifsecrets"
@@ -33,6 +46,8 @@ func ConsumeMessages() {
 	kafkaBroker := secrets.KafkaBroker
 	kafkaTopic := secrets.KafkaTopic
 
+	log.Printf("Kafka broker: %s, Kafka topic: %s", kafkaBroker, kafkaTopic)
+
 	// Kafka consumer configuration
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
@@ -40,7 +55,7 @@ func ConsumeMessages() {
 	config.Version = sarama.V2_1_0_0
 
 	// Creating a new Kafka consumer
-	consumer, err := sarama.NewConsumer([]string{kafkaBroker}, config)
+	consumer, err := deps.NewKafkaConsumer([]string{kafkaBroker}, config)
 	if err != nil {
 		log.Printf("Failed to start consumer: %v", err)
 		return
@@ -50,6 +65,7 @@ func ConsumeMessages() {
 			log.Printf("Failed to close consumer: %v", err)
 		}
 	}()
+	log.Println("Kafka consumer created successfully")
 
 	// Consume from the specified partition
 	partitionConsumer, err := consumer.ConsumePartition(kafkaTopic, 0, sarama.OffsetOldest)
@@ -62,14 +78,23 @@ func ConsumeMessages() {
 			log.Printf("Failed to close partition consumer: %v", err)
 		}
 	}()
-
-	log.Println("Kafka consumer started successfully")
-	log.Println("Partition consumer started. Waiting for messages...")
+	log.Println("Partition consumer started successfully. Waiting for messages...")
 
 	// Initialize MongoDB connection
-	if err := database.InitializeMongoDB(); err != nil {
+	if err := deps.InitializeMongoDB(); err != nil {
 		log.Printf("Failed to initialize MongoDB: %v", err)
 		return
+	}
+	log.Println("MongoDB initialized successfully")
+
+	// Wrapper function for GetCollection to match expected signature
+	getCollectionWrapper := func(collectionName string) database.CollectionInterface {
+		return deps.GetCollection(collectionName)
+	}
+
+	// Wrapper for NotifyUI to adapt to the expected signature
+	notifyUIWrapper := func(notification models.Notification, token string, secretManager secretsmanager.SecretManager) error {
+		return services.NotifyUI(notification, token, secretManager)
 	}
 
 	// Process messages
@@ -77,7 +102,7 @@ func ConsumeMessages() {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			log.Printf("Received message from Kafka: %s", string(msg.Value))
-			processMessage(msg.Value, secretManager)
+			processMessage(msg.Value, secretManager, getCollectionWrapper, notifyUIWrapper)
 
 		case err := <-partitionConsumer.Errors():
 			log.Printf("Error consuming message: %v", err)
@@ -85,19 +110,17 @@ func ConsumeMessages() {
 	}
 }
 
-// processMessage handles the received Kafka message
-func processMessage(value []byte, secretManager secretsmanager.SecretManager) {
+// processMessage handles the received Kafka message.
+func processMessage(value []byte, secretManager secretsmanager.SecretManager, getCollection func(string) database.CollectionInterface, notifyUI func(models.Notification, string, secretsmanager.SecretManager) error) {
 	log.Printf("Processing message: %s", string(value))
 
-	// message is in the format "From:<from>, To:<to>, Message:<msg>"
 	parsedMessage := parseMessage(string(value))
 	if parsedMessage == nil {
 		log.Printf("Failed to parse message: %s", string(value))
 		return
 	}
 
-	// Insert the document into MongoDB
-	collection := database.GetCollection("messages")
+	collection := getCollection("messages")
 	insertResult, err := collection.InsertOne(context.TODO(), parsedMessage)
 	if err != nil {
 		log.Printf("Failed to insert document into MongoDB: %v", err)
@@ -106,20 +129,17 @@ func processMessage(value []byte, secretManager secretsmanager.SecretManager) {
 
 	log.Printf("Message inserted into MongoDB: %s", string(value))
 
-	// Prepare the notification
 	notification := models.Notification{
 		From:    parsedMessage["from"].(string),
 		To:      parsedMessage["to"].(string),
 		Message: parsedMessage["message"].(string),
 	}
 
-	// Notify the UI about the new message
-	token := "example_token" // Replace with the actual token logic as per your setup
-	err = services.NotifyUI(notification, token, secretManager)
+	token := "example_token" // Replace with actual token logic as per your setup
+	err = notifyUI(notification, token, secretManager)
 	if err != nil {
 		log.Printf("Failed to send notification: %v", err)
 
-		// Update the document with notified status false and reason for failure
 		update := bson.M{
 			"$set": bson.M{
 				"notified": false,
@@ -133,7 +153,6 @@ func processMessage(value []byte, secretManager secretsmanager.SecretManager) {
 		return
 	}
 
-	// After notification, update the document with a notified status
 	update := bson.M{
 		"$set": bson.M{
 			"notified":   true,
@@ -146,9 +165,8 @@ func processMessage(value []byte, secretManager secretsmanager.SecretManager) {
 	}
 }
 
-// parseMessage parses a Kafka message and returns a BSON document
+// parseMessage parses a Kafka message and returns a BSON document.
 func parseMessage(message string) bson.M {
-	// Use regular expressions to capture From, To, and Message parts
 	re := regexp.MustCompile(`From:(.*?), To:(.*?), Message:(.*)`)
 	matches := re.FindStringSubmatch(message)
 

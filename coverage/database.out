@@ -1,0 +1,15 @@
+mode: set
+github.com/lep13/messaging-notification-service/database/mongodb.go:31.85,33.2 1 0
+github.com/lep13/messaging-notification-service/database/mongodb.go:35.102,37.2 1 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:46.120,49.16 3 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:49.16,51.3 1 0
+github.com/lep13/messaging-notification-service/database/mongodb.go:52.2,52.49 1 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:56.61,58.2 1 0
+github.com/lep13/messaging-notification-service/database/mongodb.go:61.32,68.16 4 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:68.16,71.3 2 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:74.2,78.16 3 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:78.16,81.3 2 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:84.2,88.16 4 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:88.16,91.3 2 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:93.2,94.12 2 1
+github.com/lep13/messaging-notification-service/database/mongodb.go:98.61,100.2 1 0

@@ -4,10 +4,21 @@ import (
 	"context"
 	"log"
 
+	"github.com/IBM/sarama"
 	"github.com/lep13/messaging-notification-service/auth"
+	"github.com/lep13/messaging-notification-service/database"
 	"github.com/lep13/messaging-notification-service/kafka"
 	secretsmanager "github.com/lep13/messaging-notification-service/secrets-manager"
 )
+
+// NewKafkaConsumer creates a new Kafka consumer
+func NewKafkaConsumer(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+	consumer, err := sarama.NewConsumer(addrs, config)
+	if err != nil {
+		return nil, err
+	}
+	return consumer, nil
+}
 
 func main() {
 	// Create a new SecretManager instance
@@ -44,6 +55,18 @@ func main() {
 
 	log.Printf("Validated user profile: %v", profile)
 
+	// Define the dependencies for Kafka consumer
+	deps := kafka.ConsumerDependencies{
+		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+			return secretManager
+		},
+		InitializeMongoDB: database.InitializeMongoDB,
+		GetCollection: func(collectionName string) database.CollectionInterface {
+			return database.GetCollection(collectionName)
+		},
+		NewKafkaConsumer: NewKafkaConsumer,
+	}
+
 	// Now continue with consuming messages from Kafka
-	kafka.ConsumeMessages()
+	kafka.ConsumeMessages(deps)
 }
