@@ -1,0 +1,21 @@
+mode: set
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:24.35,28.16 3 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:28.16,31.3 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:33.2,34.24 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:34.24,37.3 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:40.2,41.16 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:41.16,44.3 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:45.2,49.16 3 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:49.16,52.3 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:54.2,58.16 3 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:58.16,60.13 2 1
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:64.2,65.96 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:65.96,67.4 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:69.75,71.4 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:76.2,76.37 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:79.19,86.75 2 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:86.75,88.4 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:91.2,91.11 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:94.87,96.16 2 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:96.16,98.3 1 0
+github.com/lep13/messaging-notification-service/cmd/runner/runner.go:99.2,99.22 1 0

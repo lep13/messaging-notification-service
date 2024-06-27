@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/ShreerajShettyK/cognitoJwtAuthenticator"
-	// "github.com/lep13/messaging-notification-service/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,33 +33,24 @@ func TestValidateCognitoToken(t *testing.T) {
 	assert.NotNil(t, claims)
 }
 
-// func TestValidateCognitoToken_ErrorFetchingSecrets(t *testing.T) {
-// 	ctx := context.Background()
-// 	tokenString := "valid-token"
+func TestValidateCognitoToken_ErrorRetrievingSecrets(t *testing.T) {
+	ctx := context.Background()
+	tokenString := "valid-token"
 
-// 	// Mock secrets manager to simulate error
-// 	mockSM := &MockSecretsManager{
-// 		Region:     "us-east-1",
-// 		UserPoolID: "us-east-1_abc123",
-// 	}
-// 	// Override GetSecretData to return an error
-// 	// originalGetSecretData := mockSM.GetSecretData
-// 	// mockSM.GetSecretData = func(secretName string) (models.SecretData, error) {
-// 	// 	return models.SecretData{}, errors.New("error fetching secrets")
-// 	// }
-// 	// defer func() { mockSM.GetSecretData = originalGetSecretData }() // Restore original function after test
+	mockSM := &MockSecretsManagerWithError{
+		err: errors.New("error retrieving secrets"),
+	}
 
-// 	claims, err := ValidateCognitoToken(ctx, tokenString, mockSM, MockValidateToken)
+	claims, err := ValidateCognitoToken(ctx, tokenString, mockSM, MockValidateToken)
 
-// 	assert.NotNil(t, err)
-// 	assert.Nil(t, claims)
-// }
+	assert.NotNil(t, err)
+	assert.Nil(t, claims)
+}
 
-func TestValidateCognitoToken_TokenValidationError(t *testing.T) {
+func TestValidateCognitoToken_ErrorValidatingToken(t *testing.T) {
 	ctx := context.Background()
 	tokenString := "invalid-token"
 
-	// Using the shared mock secrets manager
 	mockSM := &MockSecretsManager{
 		Region:     "us-east-1",
 		UserPoolID: "us-east-1_abc123",

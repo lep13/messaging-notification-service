@@ -33,7 +33,7 @@ func ConsumeMessages(deps ConsumerDependencies) {
 		log.Println("Failed to create secret manager instance")
 		return
 	}
-	log.Println("Secret manager created successfully")
+	log.Println("Secret manager called successfully")
 
 	// Fetch secrets including Kafka broker IP and topic
 	secretName := "notifsecrets"
@@ -102,7 +102,7 @@ func ConsumeMessages(deps ConsumerDependencies) {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			log.Printf("Received message from Kafka: %s", string(msg.Value))
-			processMessage(msg.Value, secretManager, getCollectionWrapper, notifyUIWrapper)
+			ProcessMessage(msg.Value, secretManager, getCollectionWrapper, notifyUIWrapper)
 
 		case err := <-partitionConsumer.Errors():
 			log.Printf("Error consuming message: %v", err)
@@ -111,7 +111,7 @@ func ConsumeMessages(deps ConsumerDependencies) {
 }
 
 // processMessage handles the received Kafka message.
-func processMessage(value []byte, secretManager secretsmanager.SecretManager, getCollection func(string) database.CollectionInterface, notifyUI func(models.Notification, string, secretsmanager.SecretManager) error) {
+func ProcessMessage(value []byte, secretManager secretsmanager.SecretManager, getCollection func(string) database.CollectionInterface, notifyUI func(models.Notification, string, secretsmanager.SecretManager) error) {
 	log.Printf("Processing message: %s", string(value))
 
 	parsedMessage := parseMessage(string(value))

@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -217,31 +218,163 @@ func TestConsumeMessages_ErrorMongoDBInit(t *testing.T) {
 	assert.NotNil(t, mockSecretManager)
 }
 
-// func TestConsumeMessages_Success(t *testing.T) {
+func TestConsumeMessages_FailedToCreateSecretManagerInstance(t *testing.T) {
+	// Prepare the dependencies struct
+	deps := ConsumerDependencies{
+		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+			return nil
+		},
+		InitializeMongoDB: func() error { return nil },
+		GetCollection:     getMockCollection,
+		NewKafkaConsumer: func(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+			return &MockConsumer{}, nil
+		},
+	}
+
+	// Mock logging to avoid cluttering test output
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(log.Writer())
+
+	// Run the consumer
+	ConsumeMessages(deps)
+
+	// Assertions
+	assert.Nil(t, deps.NewSecretManager(nil))
+}
+
+func TestConsumeMessages_FailedToStartConsumer(t *testing.T) {
+	// Mock dependencies
+	mockSecretManager := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{
+				KafkaBroker: "localhost:9092",
+				KafkaTopic:  "test-topic",
+			}, nil
+		},
+	}
+
+	// Prepare the dependencies struct
+	deps := ConsumerDependencies{
+		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+			return mockSecretManager
+		},
+		InitializeMongoDB: func() error { return nil },
+		GetCollection:     getMockCollection,
+		NewKafkaConsumer: func(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+			return nil, errors.New("failed to start consumer")
+		},
+	}
+
+	// Mock logging to avoid cluttering test output
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(log.Writer())
+
+	// Run the consumer
+	ConsumeMessages(deps)
+
+	// Assertions
+	assert.NotNil(t, mockSecretManager)
+}
+
+func TestConsumeMessages_FailedToCloseConsumer(t *testing.T) {
+	// Mock dependencies
+	mockSecretManager := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{
+				KafkaBroker: "localhost:9092",
+				KafkaTopic:  "test-topic",
+			}, nil
+		},
+	}
+
+	mockConsumer := &MockConsumer{
+		CloseFunc: func() error { return errors.New("failed to close consumer") },
+	}
+
+	// Prepare the dependencies struct
+	deps := ConsumerDependencies{
+		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+			return mockSecretManager
+		},
+		InitializeMongoDB: func() error { return nil },
+		GetCollection:     getMockCollection,
+		NewKafkaConsumer: func(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+			return mockConsumer, nil
+		},
+	}
+
+	// Mock logging to avoid cluttering test output
+	log.SetOutput(io.Discard)
+	defer log.SetOutput(log.Writer())
+
+	// Run the consumer
+	ConsumeMessages(deps)
+
+	// Assertions
+	assert.NotNil(t, mockSecretManager)
+	assert.NotNil(t, mockConsumer)
+}
+
+func TestConsumeMessages_FailedToInitializeMongoDB(t *testing.T) {
+	// Mock dependencies
+	mockSecretManager := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{
+				CognitoToken: "mockCognitoToken",
+				KafkaBroker:  "localhost:9092",
+				KafkaTopic:   "test-topic",
+			}, nil
+		},
+	}
+
+	mockConsumer := &MockConsumer{
+		ConsumePartitionFunc: func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
+			return &MockPartitionConsumer{}, nil
+		},
+	}
+
+	// Prepare the dependencies struct
+	deps := ConsumerDependencies{
+		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+			return mockSecretManager
+		},
+		InitializeMongoDB: func() error { return errors.New("failed to initialize MongoDB") },
+		GetCollection:     getMockCollection,
+		NewKafkaConsumer: func(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+			return mockConsumer, nil
+		},
+	}
+
+	// Capture log output
+	var logOutput bytes.Buffer
+	log.SetOutput(&logOutput)
+	defer log.SetOutput(log.Writer())
+
+	// Run the consumer
+	ConsumeMessages(deps)
+
+	// Assertions
+	assert.Contains(t, logOutput.String(), "Failed to initialize MongoDB")
+}
+
+// ///////////////////////new
+
+// func TestConsumeMessages_FailedToStartPartitionConsumer(t *testing.T) {
 // 	// Mock dependencies
 // 	mockSecretManager := &MockSecretManager{
 // 		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
 // 			return models.SecretData{
-// 				KafkaBroker: "localhost:9092",
-// 				KafkaTopic:  "test-topic",
+// 				CognitoToken: "mockCognitoToken",
+// 				KafkaBroker:  "localhost:9092",
+// 				KafkaTopic:   "test-topic",
 // 			}, nil
 // 		},
 // 	}
 
 // 	mockConsumer := &MockConsumer{
-// 		MessagesChan: make(chan *sarama.ConsumerMessage),
-// 		ErrorsChan:   make(chan *sarama.ConsumerError),
-// 	}
-
-// 	mockPartitionConsumer := &MockPartitionConsumer{
-// 		MessagesChan: mockConsumer.MessagesChan,
-// 		ErrorsChan:   mockConsumer.ErrorsChan,
-// 		CloseFunc:    func() error { return nil },
-// 	}
-
-// 	// Prepare the mock for the Kafka consumer
-// 	mockConsumer.ConsumePartitionFunc = func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
-// 		return mockPartitionConsumer, nil
+// 		ConsumePartitionFunc: func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
+// 			return nil, errors.New("failed to start partition consumer")
+// 		},
 // 	}
 
 // 	// Prepare the dependencies struct
@@ -256,52 +389,38 @@ func TestConsumeMessages_ErrorMongoDBInit(t *testing.T) {
 // 		},
 // 	}
 
-// 	// Mock logging to avoid cluttering test output
-// 	log.SetOutput(io.Discard)
+// 	// Capture log output
+// 	var logOutput bytes.Buffer
+// 	log.SetOutput(&logOutput)
 // 	defer log.SetOutput(log.Writer())
 
 // 	// Run the consumer
-// 	go func() {
-// 		ConsumeMessages(deps)
-// 	}()
-
-// 	// Simulate message reception
-// 	mockConsumer.MessagesChan <- &sarama.ConsumerMessage{Value: []byte("From:John, To:Jane, Message:Hello!")}
-// 	time.Sleep(100 * time.Millisecond) // Allow some time for processing
-// 	close(mockConsumer.MessagesChan)
-// 	close(mockConsumer.ErrorsChan)
+// 	ConsumeMessages(deps)
 
 // 	// Assertions
-// 	assert.NotNil(t, mockSecretManager)
-// 	assert.NotNil(t, mockConsumer)
-// 	assert.NotNil(t, mockPartitionConsumer)
+// 	assert.Contains(t, logOutput.String(), "Failed to start partition consumer")
 // }
 
-// func TestConsumeMessages_PartitionConsumerErrorHandling(t *testing.T) {
+// func TestConsumeMessages_FailedToClosePartitionConsumer(t *testing.T) {
 // 	// Mock dependencies
 // 	mockSecretManager := &MockSecretManager{
 // 		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
 // 			return models.SecretData{
-// 				KafkaBroker: "localhost:9092",
-// 				KafkaTopic:  "test-topic",
+// 				CognitoToken: "mockCognitoToken",
+// 				KafkaBroker:  "localhost:9092",
+// 				KafkaTopic:   "test-topic",
 // 			}, nil
 // 		},
 // 	}
 
-// 	mockConsumer := &MockConsumer{
-// 		MessagesChan: make(chan *sarama.ConsumerMessage),
-// 		ErrorsChan:   make(chan *sarama.ConsumerError),
-// 	}
-
 // 	mockPartitionConsumer := &MockPartitionConsumer{
-// 		MessagesChan: mockConsumer.MessagesChan,
-// 		ErrorsChan:   mockConsumer.ErrorsChan,
-// 		CloseFunc:    func() error { return nil },
+// 		CloseFunc: func() error { return errors.New("failed to close partition consumer") },
 // 	}
 
-// 	// Prepare the mock for the Kafka consumer
-// 	mockConsumer.ConsumePartitionFunc = func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
-// 		return mockPartitionConsumer, nil
+// 	mockConsumer := &MockConsumer{
+// 		ConsumePartitionFunc: func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
+// 			return mockPartitionConsumer, nil
+// 		},
 // 	}
 
 // 	// Prepare the dependencies struct
@@ -316,27 +435,109 @@ func TestConsumeMessages_ErrorMongoDBInit(t *testing.T) {
 // 		},
 // 	}
 
-// 	// Mock logging to avoid cluttering test output
-// 	log.SetOutput(io.Discard)
+// 	// Capture log output
+// 	var logOutput bytes.Buffer
+// 	log.SetOutput(&logOutput)
 // 	defer log.SetOutput(log.Writer())
 
 // 	// Run the consumer
+// 	ConsumeMessages(deps)
+
+// 	// Close the partition consumer to trigger the error
+// 	mockPartitionConsumer.CloseFunc()
+
+// 	// Assertions
+// 	assert.Contains(t, logOutput.String(), "Failed to close partition consumer")
+// }
+
+// func TestConsumeMessages_ErrorConsumingMessage(t *testing.T) {
+// 	// Mock dependencies
+// 	mockSecretManager := &MockSecretManager{
+// 		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+// 			return models.SecretData{
+// 				CognitoToken: "mockCognitoToken",
+// 				KafkaBroker:  "localhost:9092",
+// 				KafkaTopic:   "test-topic",
+// 			}, nil
+// 		},
+// 	}
+
+// 	mockPartitionConsumer := &MockPartitionConsumer{
+// 		MessagesChan: make(chan *sarama.ConsumerMessage, 1),
+// 		ErrorsChan:   make(chan *sarama.ConsumerError, 1),
+// 		CloseFunc:    func() error { return nil },
+// 	}
+
+// 	mockConsumer := &MockConsumer{
+// 		ConsumePartitionFunc: func(topic string, partition int32, offset int64) (sarama.PartitionConsumer, error) {
+// 			return mockPartitionConsumer, nil
+// 		},
+// 	}
+
+// 	// Prepare the dependencies struct
+// 	deps := ConsumerDependencies{
+// 		NewSecretManager: func(client secretsmanager.SecretsManagerAPI) secretsmanager.SecretManager {
+// 			return mockSecretManager
+// 		},
+// 		InitializeMongoDB: func() error { return nil },
+// 		GetCollection:     getMockCollection,
+// 		NewKafkaConsumer: func(addrs []string, config *sarama.Config) (sarama.Consumer, error) {
+// 			return mockConsumer, nil
+// 		},
+// 	}
+
+// 	// Capture log output
+// 	var logOutput bytes.Buffer
+// 	log.SetOutput(&logOutput)
+// 	defer log.SetOutput(log.Writer())
+
+// 	// Run the consumer in a separate goroutine to avoid blocking the main thread
 // 	go func() {
 // 		ConsumeMessages(deps)
 // 	}()
 
 // 	// Simulate an error reception
-// 	mockConsumer.ErrorsChan <- &sarama.ConsumerError{Err: errors.New("mock partition consumer error")}
+// 	mockPartitionConsumer.ErrorsChan <- &sarama.ConsumerError{Err: errors.New("mock partition consumer error")}
 // 	time.Sleep(100 * time.Millisecond) // Allow some time for processing
-// 	close(mockConsumer.MessagesChan)
-// 	close(mockConsumer.ErrorsChan)
+// 	close(mockPartitionConsumer.MessagesChan)
+// 	close(mockPartitionConsumer.ErrorsChan)
 
 // 	// Assertions
-// 	assert.NotNil(t, mockSecretManager)
-// 	assert.NotNil(t, mockConsumer)
-// 	assert.NotNil(t, mockPartitionConsumer)
+// 	assert.Contains(t, logOutput.String(), "Error consuming message")
 // }
 
+func TestProcessMessage_UpdateFailure(t *testing.T) {
+	// Mock the secrets manager
+	mockSecretManager := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{}, nil
+		},
+	}
+
+	// Mock the collection to simulate successful insert and update failure
+	mockCollection := &MockCollection{
+		InsertOneFunc: func(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+			return &mongo.InsertOneResult{InsertedID: "mockID"}, nil
+		},
+		UpdateByIDFunc: func(ctx context.Context, id interface{}, update interface{}, opts ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
+			return nil, errors.New("mock update failure")
+		},
+	}
+
+	// Replace GetCollection to return the mock collection
+	getCollection := func(name string) database.CollectionInterface {
+		return mockCollection
+	}
+
+	message := []byte("From:John, To:Jane, Message:Hello!")
+	ProcessMessage(message, mockSecretManager, getCollection, mockNotifyUI)
+
+	// Assertions to check that the expected methods were called on the mock
+	assert.NotNil(t, mockCollection.InsertOneFunc, "InsertOne should be called on the mock collection")
+	assert.NotNil(t, mockCollection.UpdateByIDFunc, "UpdateByID should be called on the mock collection")
+}
+
+// ////////////////////////////////////////////////////////////////////new
 func TestProcessMessage_Success(t *testing.T) {
 	// Mock the secrets manager
 	mockSecretManager := &MockSecretManager{
@@ -361,7 +562,7 @@ func TestProcessMessage_Success(t *testing.T) {
 	}
 
 	message := []byte("From:John, To:Jane, Message:Hello!")
-	processMessage(message, mockSecretManager, getCollection, mockNotifyUI)
+	ProcessMessage(message, mockSecretManager, getCollection, mockNotifyUI)
 
 	// Assertions to check that the expected methods were called on the mock
 	assert.NotNil(t, mockCollection.InsertOneFunc, "InsertOne should be called on the mock collection")
@@ -389,7 +590,7 @@ func TestProcessMessage_InsertFailure(t *testing.T) {
 	}
 
 	message := []byte("From:John, To:Jane, Message:Hello!")
-	processMessage(message, mockSecretManager, getCollection, mockNotifyUI)
+	ProcessMessage(message, mockSecretManager, getCollection, mockNotifyUI)
 
 	// Assertions to check that the expected methods were called on the mock
 	assert.NotNil(t, mockCollection.InsertOneFunc, "InsertOne should be called on the mock collection")
@@ -424,7 +625,7 @@ func TestProcessMessage_NotificationFailure(t *testing.T) {
 	}
 
 	message := []byte("From:John, To:Jane, Message:Hello!")
-	processMessage(message, mockSecretManager, getCollection, mockNotifyUI)
+	ProcessMessage(message, mockSecretManager, getCollection, mockNotifyUI)
 
 	// Assertions to check that the expected methods were called on the mock
 	assert.NotNil(t, mockCollection.InsertOneFunc, "InsertOne should be called on the mock collection")

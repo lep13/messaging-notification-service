@@ -170,3 +170,45 @@ func TestNotifyUI_JSONMarshalError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to marshal notification")
 }
+
+// Test case to simulate request creation failure
+func TestNotifyUI_RequestCreationError(t *testing.T) {
+	notification := models.Notification{
+		From:    "test-from",
+		To:      "test-to",
+		Message: "test-message",
+	}
+
+	mockSM := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{
+				NotificationEndpoint: ":::", // Invalid URL to force request creation error
+			}, nil
+		},
+	}
+
+	err := NotifyUI(notification, "test-token", mockSM)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+// Test case to simulate HTTP request failure
+func TestNotifyUI_HTTPRequestError(t *testing.T) {
+	notification := models.Notification{
+		From:    "test-from",
+		To:      "test-to",
+		Message: "test-message",
+	}
+
+	mockSM := &MockSecretManager{
+		GetSecretDataFunc: func(secretName string) (models.SecretData, error) {
+			return models.SecretData{
+				NotificationEndpoint: "http://invalid-url", // Invalid URL to force HTTP request error
+			}, nil
+		},
+	}
+
+	err := NotifyUI(notification, "test-token", mockSM)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to send notification")
+}

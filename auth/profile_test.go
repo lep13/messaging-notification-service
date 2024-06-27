@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -133,11 +134,21 @@ func TestValidateUserProfile(t *testing.T) {
 		assert.Nil(t, profile)
 	})
 
-	t.Run("HTTP Request Fails", func(t *testing.T) {
-		mockServer.Close()
-		mockSM.ProfileURL = mockServer.URL
+	t.Run("Error Sending Request", func(t *testing.T) {
+		getProfileToken = func(profileURL string) (string, error) {
+			return "mock-token", nil
+		}
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		defer mockServer.Close()
+
+		mockSM := &MockSecretsManager{
+			ProfileURL: mockServer.URL,
+		}
+
 		profile, err := ValidateUserProfile(ctx, mockSM)
-		assert.Error(t, err)
+		assert.NotNil(t, err)
 		assert.Nil(t, profile)
 	})
 
@@ -145,11 +156,27 @@ func TestValidateUserProfile(t *testing.T) {
 		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.(http.Flusher).Flush()
-			// w.Close()
+			w.(io.Closer).Close()
 		}))
 		defer mockServer.Close()
 
 		mockSM.ProfileURL = mockServer.URL
+		profile, err := ValidateUserProfile(ctx, mockSM)
+		assert.Error(t, err)
+		assert.Nil(t, profile)
+	})
+
+	t.Run("Unexpected Status Code", func(t *testing.T) {
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal Server Error"))
+		}))
+		defer mockServer.Close()
+
+		mockSM := &MockSecretsManager{
+			ProfileURL: mockServer.URL,
+		}
+
 		profile, err := ValidateUserProfile(ctx, mockSM)
 		assert.Error(t, err)
 		assert.Nil(t, profile)
@@ -180,4 +207,79 @@ func TestValidateUserProfile_ErrorFetchingSecrets(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Nil(t, profile)
+}
+
+// New test cases to explicitly cover the lines
+func TestValidateUserProfile_ErrorCases(t *testing.T) {
+	ctx := context.Background()
+
+	// mockSM := &MockSecretsManager{
+	// 	ProfileURL: "http://valid-url",
+	// }
+
+	// t.Run("Error Creating Request", func(t *testing.T) {
+	// 	originalNewRequestWithContext := http.NewRequestWithContext
+	// 	defer func() { http.NewRequestWithContext = originalNewRequestWithContext }()
+
+	// 	httpNewRequestWithContext := func(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	// 		return nil, errors.New("error creating request")
+	// 	}
+
+	// 	http.NewRequestWithContext = httpNewRequestWithContext
+
+	// 	profile, err := ValidateUserProfile(ctx, mockSM)
+	// 	assert.Error(t, err)
+	// 	assert.Nil(t, profile)
+	// })
+
+	// t.Run("Error Sending Request", func(t *testing.T) {
+	// 	client := &http.Client{}
+	// 	originalClientDo := client.Do
+	// 	defer func() { client.Do = originalClientDo }()
+
+	// 	clientDo := func(req *http.Request) (*http.Response, error) {
+	// 		return nil, errors.New("error sending request")
+	// 	}
+
+	// 	client.Do = clientDo
+
+	// 	profile, err := ValidateUserProfile(ctx, mockSM)
+	// 	assert.Error(t, err)
+	// 	assert.Nil(t, profile)
+	// })
+
+	t.Run("Error Reading Response", func(t *testing.T) {
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			// Force an error by closing the server
+			w.(http.Flusher).Flush()
+			w.(io.Closer).Close()
+		}))
+		defer mockServer.Close()
+
+		mockSM := &MockSecretsManager{
+			ProfileURL: mockServer.URL,
+		}
+
+		profile, err := ValidateUserProfile(ctx, mockSM)
+		assert.Error(t, err)
+		assert.Nil(t, profile)
+	})
+
+	t.Run("Unexpected Status Code", func(t *testing.T) {
+		mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Internal Server Error"))
+		}))
+		defer mockServer.Close()
+
+		mockSM := &MockSecretsManager{
+			ProfileURL: mockServer.URL,
+		}
+
+		profile, err := ValidateUserProfile(ctx, mockSM)
+		assert.Error(t, err)
+		assert.Nil(t, profile)
+	})
+
 }

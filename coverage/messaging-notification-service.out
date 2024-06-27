@@ -1,16 +1,2 @@
 mode: set
-github.com/lep13/messaging-notification-service/main.go:15.87,17.16 2 0
-github.com/lep13/messaging-notification-service/main.go:17.16,19.3 1 0
-github.com/lep13/messaging-notification-service/main.go:20.2,20.22 1 0
-github.com/lep13/messaging-notification-service/main.go:23.13,30.16 4 0
-github.com/lep13/messaging-notification-service/main.go:30.16,33.3 2 0
-github.com/lep13/messaging-notification-service/main.go:35.2,36.24 2 0
-github.com/lep13/messaging-notification-service/main.go:36.24,39.3 2 0
-github.com/lep13/messaging-notification-service/main.go:42.2,43.16 2 0
-github.com/lep13/messaging-notification-service/main.go:43.16,46.3 2 0
-github.com/lep13/messaging-notification-service/main.go:47.2,51.16 3 0
-github.com/lep13/messaging-notification-service/main.go:51.16,54.3 2 0
-github.com/lep13/messaging-notification-service/main.go:56.2,60.96 2 0
-github.com/lep13/messaging-notification-service/main.go:60.96,62.4 1 0
-github.com/lep13/messaging-notification-service/main.go:64.75,66.4 1 0
-github.com/lep13/messaging-notification-service/main.go:71.2,71.29 1 0
+github.com/lep13/messaging-notification-service/main.go:7.13,9.2 1 0
